@@ -29,6 +29,10 @@ class Assalariados(db.Model):
     id = db.Column(db.String(255), db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
     salario = db.Column(db.Float)
 
+    def __init__(self, id, salario):
+        self.id = id
+        self.salario = salario
+
 
 class Horistas(db.Model):
     id = db.Column(db.String(255), db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
@@ -39,6 +43,11 @@ class Comissionados(db.Model):
     id = db.Column(db.String(255), db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
     salario = db.Column(db.Float, nullable=False)
     comissaoP = db.Column(db.Float, nullable=False)
+
+    def __init__(self, id, salario, comissaoP):
+        self.id = id
+        self.salario = salario
+        self.comissaoP = comissaoP
 
 
 class Vendas(db.Model):
@@ -77,16 +86,32 @@ class Sindicato(db.Model):
 def add_employee():
     content = request.get_json()
 
-    db.session.add(Empregado(
+    new_employee = Empregado(
         endereco=content["endereco"],
         tipo=content["tipo"],
         tipoPagamento=content["tipoPagamento"],
         agendaPagamento=content["agendaPagamento"]
+    )
+
+    db.session.add(new_employee)
+    db.session.commit()
+
+    print("Created new employee: " + str(new_employee.id))
+    return str(new_employee.id)
+
+@app.route("/ADD_ASSALARIADO", methods=["GET", "POST"])
+def add_assalariado():
+    content = request.get_json()
+
+    db.session.add(Assalariados(
+        id=content["id"],
+        salario=content["salario"]
     ))
     db.session.commit()
 
-    print("Created new employee")
-    return "Created new employee"
+    print("Added assalariado")
+    return "Added assalariado"
+
 
 
 if __name__ == '__main__':
