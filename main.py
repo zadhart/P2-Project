@@ -1,5 +1,4 @@
-import datetime
-
+from datetime import datetime
 from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 import uuid
@@ -69,7 +68,7 @@ class Vendas(db.Model):
         self.vid = str(uuid.uuid4())
         self.id = id
         self.valor = valor
-        self.date = datetime.date
+        self.date = datetime.now()
 
 
 class Sindicato(db.Model):
@@ -133,6 +132,22 @@ def rmv_employee():
     db.session.commit()
 
     return "Employee removed"
+
+@app.route("/SELL", methods=["GET", "POST"])
+def sell():
+    content = request.get_json()
+
+    sell = Vendas(
+        id=content["id"],
+        valor=content["valor"]
+    )
+
+    db.session.add(sell)
+    db.session.commit()
+
+    print("Created sale")
+
+    return "Created sale"
 
 
 if __name__ == '__main__':
