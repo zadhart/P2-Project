@@ -1,3 +1,5 @@
+import datetime
+
 from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 import uuid
@@ -12,48 +14,75 @@ db = SQLAlchemy(app)
 
 class Empregado(db.Model):
     id = db.Column(db.String(255), unique=True, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
     endereco = db.Column(db.String(255))
     tipo = db.Column(db.String(255), nullable=False)
-    tipoPagamento = db.Column(db.String(255), nullable=False)
-    agendaPagamento = db.Column(db.String(255), nullable=False)
-    assalariados = db.relationship("Assalariados", backref="empregado",uselist=False, cascade="all,delete")
 
-    def __init__(self, endereco, tipo, tipoPagamento, agendaPagamento):
+    # Criando os relacionamentos entre as tabelas
+    assalariados = db.relationship("Assalariados", backref="empregado",uselist=False, cascade="all,delete")
+    pontos = db.relationship("Pontos", backref="empregado",uselist=False, cascade="all,delete")
+    vendas = db.relationship("Vendas", backref="empregado",uselist=False, cascade="all,delete")
+    sindicato = db.relationship("Sindicato", backref="empregado",uselist=False, cascade="all,delete")
+
+    def __init__(self,nome, endereco, tipo):
         self.id = str(uuid.uuid4())
+        self.nome = nome
         self.endereco = endereco
         self.tipo = tipo
-        self.tipoPagamento = tipoPagamento
-        self.agendaPagamento = agendaPagamento
 
 
 class Assalariados(db.Model):
     pid = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
     id = db.Column(db.String(255), db.ForeignKey("empregado.id", ondelete='CASCADE'))
+    comisssaop = db.Column(db.Float)
     salario = db.Column(db.Float)
 
-    def __init__(self, id, salario):
+    def __init__(self, id, salario, comissao):
         self.pid = str(uuid.uuid4())
         self.id = id
         self.salario = salario
+        self.comisssaop = comissao
 
 
-class Horistas(db.Model):
-    id = db.Column(db.String(255), db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
+class Pontos(db.Model):
+    pid = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
+    id = db.Column(db.String(255), db.ForeignKey("empregado.id", ondelete='CASCADE'))
     horasTrabalhadas = db.Column(db.Float)
+    mes = db.Column(db.Integer, nullable=False)
+    semana = db.Column(db.Integer, nullable=False)
+
+    def __init__(self, id, horasTrabalhadas, mes, semana):
+        self.pid = str(uuid.uuid4())
+        self.id = id
+        self.horasTrabalhadas = horasTrabalhadas
+        self.mes = mes
+        self.semana = semana
 
 
 class Vendas(db.Model):
     vid = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
-    id = db.Column(db.Integer, db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
+    id = db.Column(db.String(255), db.ForeignKey("empregado.id", ondelete='CASCADE'))
     valor = db.Column(db.Float)
     date = db.Column(db.DateTime, nullable=False)
+
+    def __init__(self, id, valor):
+        self.vid = str(uuid.uuid4())
+        self.id = id
+        self.valor = valor
+        self.date = datetime.date
 
 
 class Sindicato(db.Model):
     sid = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
-    id = db.Column(db.String(255), db.ForeignKey("empregado.id"), unique=True, nullable=False)
+    id = db.Column(db.String(255), db.ForeignKey("empregado.id", ondelete='CASCADE'))
     taxa = db.Column(db.Float)
-    taxaAdic = db.Column(db.Float)
+    taxa_add = db.Column(db.Float)
+
+    def __init__(self, id, taxa, taxa_add):
+        self.sid = str(uuid.uuid4())
+        self.id = id
+        self.taxa = taxa
+        self.taxa_add = taxa_add
 
 
 # Creating the Routes
@@ -65,18 +94,29 @@ def add_employee():
     new_employee = Empregado(
         endereco=content["endereco"],
         tipo=content["tipo"],
-        tipoPagamento=content["tipoPagamento"],
-        agendaPagamento=content["agendaPagamento"]
+        nome=content["nome"]
     )
 
     db.session.add(new_employee)
 
-    if(content["tipo"] == "Assalariado"):
+    # Verificando se o novo empregado é assalariado
+    if content["tipo"] == "Assalariado":
         newAssal = Assalariados(
             id=new_employee.id,
-            salario=int(content["salario"])
+            salario=int(content["salario"]),
+            comissao=float(content["comissao"])
         )
         db.session.add(newAssal)
+
+    # Verificando se o novo empregado faz parte do sindicato
+    if content["sindicato"] == "SIM":
+        newSind = Sindicato(
+            id=new_employee.id,
+            taxa=content["taxa"],
+            taxa_add=content["taxa_add"]
+        )
+
+        db.session.add(newSind)
 
     db.session.commit()
 
@@ -93,21 +133,6 @@ def rmv_employee():
     db.session.commit()
 
     return "Employee removed"
-
-
-@app.route("/ADD_ASSALARIADO", methods=["GET", "POST"])
-def add_assalariado():
-    content = request.get_json()
-
-    db.session.add(Assalariados(
-        id=content["id"],
-        salario=content["salario"]
-    ))
-    db.session.commit()
-
-    print("Added assalariado")
-    return "Added assalariado"
-
 
 
 if __name__ == '__main__':
