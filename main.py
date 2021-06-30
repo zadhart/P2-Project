@@ -16,6 +16,7 @@ class Empregado(db.Model):
     tipo = db.Column(db.String(255), nullable=False)
     tipoPagamento = db.Column(db.String(255), nullable=False)
     agendaPagamento = db.Column(db.String(255), nullable=False)
+    assalariados = db.relationship("Assalariados", backref="empregado",uselist=False, cascade="all,delete")
 
     def __init__(self, endereco, tipo, tipoPagamento, agendaPagamento):
         self.id = str(uuid.uuid4())
@@ -26,10 +27,12 @@ class Empregado(db.Model):
 
 
 class Assalariados(db.Model):
-    id = db.Column(db.String(255), db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
+    pid = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
+    id = db.Column(db.String(255), db.ForeignKey("empregado.id", ondelete='CASCADE'))
     salario = db.Column(db.Float)
 
     def __init__(self, id, salario):
+        self.pid = str(uuid.uuid4())
         self.id = id
         self.salario = salario
 
@@ -39,38 +42,11 @@ class Horistas(db.Model):
     horasTrabalhadas = db.Column(db.Float)
 
 
-class Comissionados(db.Model):
-    id = db.Column(db.String(255), db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
-    salario = db.Column(db.Float, nullable=False)
-    comissaoP = db.Column(db.Float, nullable=False)
-
-    def __init__(self, id, salario, comissaoP):
-        self.id = id
-        self.salario = salario
-        self.comissaoP = comissaoP
-
-
 class Vendas(db.Model):
     vid = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
     id = db.Column(db.Integer, db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
     valor = db.Column(db.Float)
     date = db.Column(db.DateTime, nullable=False)
-
-
-class PagSemanal(db.Model):
-    id = db.Column(db.String(255), db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
-    diaSem = db.Column(db.String, nullable=False)
-
-
-class PagBiSemanal(db.Model):
-    id = db.Column(db.String(255), db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
-    diaSem = db.Column(db.String, nullable=False)
-    tipoSem = db.Column(db.String, nullable=False)
-
-
-class PagMensal(db.Model):
-    id = db.Column(db.String(255), db.ForeignKey("empregado.id"), primary_key=True, unique=True, nullable=False)
-    diaMes = db.Column(db.Integer, nullable=False)
 
 
 class Sindicato(db.Model):
@@ -94,10 +70,30 @@ def add_employee():
     )
 
     db.session.add(new_employee)
+
+    if(content["tipo"] == "Assalariado"):
+        newAssal = Assalariados(
+            id=new_employee.id,
+            salario=int(content["salario"])
+        )
+        db.session.add(newAssal)
+
     db.session.commit()
 
     print("Created new employee: " + str(new_employee.id))
     return str(new_employee.id)
+
+
+@app.route("/RMV_EMPLOYEE", methods=["GET", "POST"])
+def rmv_employee():
+    content = request.get_json()
+
+    obj = db.session.query(Empregado).filter(Empregado.id == content["id"]).first()
+    db.session.delete(obj)
+    db.session.commit()
+
+    return "Employee removed"
+
 
 @app.route("/ADD_ASSALARIADO", methods=["GET", "POST"])
 def add_assalariado():
