@@ -149,6 +149,23 @@ def sell():
 
     return "Created sale"
 
+@app.route("/TCARD", methods=["GET", "POST"])
+def read_tcard():
+    content = request.get_json()
+
+    card = Pontos(
+        id=content["id"],
+        horasTrabalhadas=content["horasTrabalhadas"],
+        mes=content["mes"],
+        semana=content["semana"]
+    )
+
+    db.session.add(card)
+    db.session.commit()
+
+    print("Added TCARD")
+    return "Added TCARD"
+
 
 if __name__ == '__main__':
     app.run()
