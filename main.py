@@ -18,12 +18,13 @@ class Empregado(db.Model):
     tipo = db.Column(db.String(255), nullable=False)
 
     # Criando os relacionamentos entre as tabelas
-    assalariados = db.relationship("Assalariados", backref="empregado",uselist=False, cascade="all,delete")
-    pontos = db.relationship("Pontos", backref="empregado",uselist=False, cascade="all,delete")
-    vendas = db.relationship("Vendas", backref="empregado",uselist=False, cascade="all,delete")
-    sindicato = db.relationship("Sindicato", backref="empregado",uselist=False, cascade="all,delete")
+    assalariados = db.relationship("Assalariados", backref="empregado", uselist=False, cascade="all,delete")
+    pontos = db.relationship("Pontos", backref="empregado", uselist=False, cascade="all,delete")
+    vendas = db.relationship("Vendas", backref="empregado", uselist=False, cascade="all,delete")
+    sindicato = db.relationship("Sindicato", backref="empregado", uselist=False, cascade="all,delete")
+    pagamento = db.relationship("Pagamentos", backref="empregado", uselist=False, cascade="all,delete")
 
-    def __init__(self,nome, endereco, tipo):
+    def __init__(self, nome, endereco, tipo):
         self.id = str(uuid.uuid4())
         self.nome = nome
         self.endereco = endereco
@@ -43,12 +44,30 @@ class Assalariados(db.Model):
         self.comisssaop = comissao
 
 
+class Pagamentos(db.Model):
+    pid = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
+    id = db.Column(db.String(255), db.ForeignKey("empregado.id", ondelete='CASCADE'))
+    tipo = db.Column(db.String(255), nullable=False)
+    diaMes = db.Column(db.Integer)
+    diaSem = db.Column(db.String(255))
+    tipoSem = db.Column(db.String(255))
+
+    def __init__(self, id, tipo, diaMes, diaSem, tipoSem):
+        self.pid = str(uuid.uuid4())
+        self.id = id
+        self.tipo = tipo
+        self.diaMes = diaMes
+        self.diaSem = diaSem
+        self.tipoSem = tipoSem
+
+
 class Pontos(db.Model):
     pid = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
     id = db.Column(db.String(255), db.ForeignKey("empregado.id", ondelete='CASCADE'))
     horasTrabalhadas = db.Column(db.Float)
     mes = db.Column(db.Integer, nullable=False)
     semana = db.Column(db.Integer, nullable=False)
+    date = db.Column(db.DateTime, nullable=False)
 
     def __init__(self, id, horasTrabalhadas, mes, semana):
         self.pid = str(uuid.uuid4())
@@ -56,6 +75,7 @@ class Pontos(db.Model):
         self.horasTrabalhadas = horasTrabalhadas
         self.mes = mes
         self.semana = semana
+        self.date = datetime.now()
 
 
 class Vendas(db.Model):
@@ -102,7 +122,7 @@ def add_employee():
     if content["tipo"] == "Assalariado":
         newAssal = Assalariados(
             id=new_employee.id,
-            salario=int(content["salario"]),
+            salario=float(content["salario"]),
             comissao=float(content["comissao"])
         )
         db.session.add(newAssal)
@@ -116,6 +136,16 @@ def add_employee():
         )
 
         db.session.add(newSind)
+
+    # Estabelecendo o tipo de pagamento do funcionario
+    tipoPagam = Pagamentos(
+        id=new_employee.id,
+        tipo=content["tipo"],
+        diaMes=content["diaMes"],
+        diaSem=content["diaSem"],
+        tipoSem=content["tipoSem"]
+    )
+    db.session.add(tipoPagam)
 
     db.session.commit()
 
