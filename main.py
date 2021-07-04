@@ -15,33 +15,17 @@ class Empregado(db.Model):
     id = db.Column(db.String(255), unique=True, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
     endereco = db.Column(db.String(255))
-    tipo = db.Column(db.String(255), nullable=False)
 
     # Criando os relacionamentos entre as tabelas
-    assalariados = db.relationship("Assalariados", backref="empregado", uselist=False, cascade="all,delete")
     pontos = db.relationship("Pontos", backref="empregado", uselist=False, cascade="all,delete")
     vendas = db.relationship("Vendas", backref="empregado", uselist=False, cascade="all,delete")
     sindicato = db.relationship("Sindicato", backref="empregado", uselist=False, cascade="all,delete")
     pagamento = db.relationship("Pagamentos", backref="empregado", uselist=False, cascade="all,delete")
 
-    def __init__(self, nome, endereco, tipo):
+    def __init__(self, nome, endereco):
         self.id = str(uuid.uuid4())
         self.nome = nome
         self.endereco = endereco
-        self.tipo = tipo
-
-
-class Assalariados(db.Model):
-    pid = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
-    id = db.Column(db.String(255), db.ForeignKey("empregado.id", ondelete='CASCADE'))
-    comisssaop = db.Column(db.Float)
-    salario = db.Column(db.Float)
-
-    def __init__(self, id, salario, comissao):
-        self.pid = str(uuid.uuid4())
-        self.id = id
-        self.salario = salario
-        self.comisssaop = comissao
 
 
 class Pagamentos(db.Model):
@@ -51,14 +35,20 @@ class Pagamentos(db.Model):
     diaMes = db.Column(db.Integer)
     diaSem = db.Column(db.String(255))
     tipoSem = db.Column(db.String(255))
+    salario = db.Column(db.Float)
+    comissao = db.Column(db.Float)
+    salarioHora = db.Column(db.Float)
 
-    def __init__(self, id, tipo, diaMes, diaSem, tipoSem):
+    def __init__(self, id, tipo, diaMes, diaSem, tipoSem, salario, comissao, salarioHora):
         self.pid = str(uuid.uuid4())
         self.id = id
         self.tipo = tipo
         self.diaMes = diaMes
         self.diaSem = diaSem
         self.tipoSem = tipoSem
+        self.salario = salario
+        self.salarioHora = salarioHora
+        self.comissao = comissao
 
 
 class Pontos(db.Model):
@@ -94,14 +84,16 @@ class Vendas(db.Model):
 class Sindicato(db.Model):
     sid = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
     id = db.Column(db.String(255), db.ForeignKey("empregado.id", ondelete='CASCADE'))
+    membro = db.Column(db.String(255), nullable=False)
     taxa = db.Column(db.Float)
     taxa_add = db.Column(db.Float)
 
-    def __init__(self, id, taxa, taxa_add):
+    def __init__(self, id, taxa, taxa_add, membro):
         self.sid = str(uuid.uuid4())
         self.id = id
         self.taxa = taxa
         self.taxa_add = taxa_add
+        self.membro = membro
 
 
 # Creating the Routes
@@ -112,30 +104,19 @@ def add_employee():
 
     new_employee = Empregado(
         endereco=content["endereco"],
-        tipo=content["tipo"],
         nome=content["nome"]
     )
 
     db.session.add(new_employee)
 
-    # Verificando se o novo empregado é assalariado
-    if content["tipo"] == "Assalariado":
-        newAssal = Assalariados(
-            id=new_employee.id,
-            salario=float(content["salario"]),
-            comissao=float(content["comissao"])
-        )
-        db.session.add(newAssal)
+    newSind = Sindicato(
+        id=new_employee.id,
+        membro= content["sindicato"],
+        taxa=content["taxa"],
+        taxa_add=content["taxa_add"]
+    )
 
-    # Verificando se o novo empregado faz parte do sindicato
-    if content["sindicato"] == "SIM":
-        newSind = Sindicato(
-            id=new_employee.id,
-            taxa=content["taxa"],
-            taxa_add=content["taxa_add"]
-        )
-
-        db.session.add(newSind)
+    db.session.add(newSind)
 
     # Estabelecendo o tipo de pagamento do funcionario
     tipoPagam = Pagamentos(
@@ -143,7 +124,10 @@ def add_employee():
         tipo=content["tipo"],
         diaMes=content["diaMes"],
         diaSem=content["diaSem"],
-        tipoSem=content["tipoSem"]
+        tipoSem=content["tipoSem"],
+        salario=content["salario"],
+        comissao=content["comissao"],
+        salarioHora=content["salarioHora"]
     )
     db.session.add(tipoPagam)
 
@@ -163,6 +147,7 @@ def rmv_employee():
 
     return "Employee removed"
 
+
 @app.route("/SELL", methods=["GET", "POST"])
 def sell():
     content = request.get_json()
@@ -178,6 +163,7 @@ def sell():
     print("Created sale")
 
     return "Created sale"
+
 
 @app.route("/TCARD", methods=["GET", "POST"])
 def read_tcard():
@@ -195,6 +181,36 @@ def read_tcard():
 
     print("Added TCARD")
     return "Added TCARD"
+
+
+@app.route("/UPDATE", methods=["GET", "POST"])
+def update():
+    content = request.get_json()
+
+    funcionario = db.session.query(Empregado).filter(Empregado.id == content["id"]).first()
+
+    funcionario.endereco = content["endereco"]
+
+    funcPagamento = db.session.query(Pagamentos).filter(Pagamentos.id == content["id"]).first()
+
+    funcPagamento.tipo = content["tipo"]
+    funcPagamento.diaMes = content["diaMes"]
+    funcPagamento.diaSem = content["diaSem"]
+    funcPagamento.tipoSem = content["tipoSem"]
+    funcPagamento.salario = content["salario"]
+    funcPagamento.salarioHora = content["salarioHora"]
+    funcPagamento.comissao = content["comissao"]
+
+    funcSindicato = db.session.query(Sindicato).filter(Sindicato.id == content["id"]).first()
+
+    funcSindicato.taxa = content["taxa"]
+    funcSindicato.taxa_add = content["taxa_add"]
+    funcSindicato.membro = content["sindicato"]
+
+    db.session.commit()
+
+    print("updated")
+    return "Updated"
 
 
 if __name__ == '__main__':
