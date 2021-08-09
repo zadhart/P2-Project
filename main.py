@@ -27,29 +27,13 @@ class Change():
 
         return "Employee removed"
 
+    def add_employee(self):
+        db.session.add(self.prev_data)
+        db.session.commit()
+
     def undoUpdate(self):
-        content = request.get_json()
-
-        funcionario = db.session.query(Empregado).filter(Empregado.id == content["id"]).first()
-
-        funcionario.endereco = content["endereco"]
-
-        funcPagamento = db.session.query(Pagamentos).filter(Pagamentos.id == content["id"]).first()
-
-        funcPagamento.tipo = content["tipo"]
-        funcPagamento.diaMes = content["diaMes"]
-        funcPagamento.diaSem = content["diaSem"]
-        funcPagamento.tipoSem = content["tipoSem"]
-        funcPagamento.salario = content["salario"]
-        funcPagamento.salarioHora = content["salarioHora"]
-        funcPagamento.comissao = content["comissao"]
-
-        funcSindicato = db.session.query(Sindicato).filter(Sindicato.id == content["id"]).first()
-
-        funcSindicato.taxa = content["taxa"]
-        funcSindicato.taxa_add = content["taxa_add"]
-        funcSindicato.membro = content["sindicato"]
-
+        self.rmv_employee()
+        self.add_employee()
         db.session.commit()
 
         print("updated")
@@ -227,6 +211,12 @@ def rmv_employee():
     content = request.get_json()
 
     obj = db.session.query(Empregado).filter(Empregado.id == content["id"]).first()
+
+    last_changes.append(Change(prev_data=obj,
+                               new_data=None,
+                               change_function="rmv_employee",
+                               undo_function="add_employee"))
+
     db.session.delete(obj)
     db.session.commit()
 
@@ -286,6 +276,8 @@ def update():
 
     funcionario = db.session.query(Empregado).filter(Empregado.id == content["id"]).first()
 
+    old_one = funcionario
+
     funcionario.endereco = content["endereco"]
 
     funcPagamento = db.session.query(Pagamentos).filter(Pagamentos.id == content["id"]).first()
@@ -303,6 +295,11 @@ def update():
     funcSindicato.taxa = content["taxa"]
     funcSindicato.taxa_add = content["taxa_add"]
     funcSindicato.membro = content["sindicato"]
+
+    last_changes.append(Change(prev_data=old_one,
+                               new_data=funcionario,
+                               change_function="update",
+                               undo_function="undo_update"))
 
     db.session.commit()
 
