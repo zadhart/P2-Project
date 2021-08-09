@@ -7,10 +7,81 @@ app = Flask(__name__)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///projetoP2.sqlite3'
 db = SQLAlchemy(app)
+last_changes = []
+
+
+class Change():
+    def __init__(self, new_data, prev_data, change_function, undo_function):
+        self.prev_data = prev_data
+        self.new_data = new_data
+        self.change_function = change_function
+        self.undo_function = undo_function
+
+    def rmv_employee(self):
+        '''content = request.get_json()
+
+        obj = db.session.query(Empregado).filter(Empregado.id == content["id"]).first()'''
+        obj = self.new_data
+        db.session.delete(obj)
+        db.session.commit()
+
+        return "Employee removed"
+
+    def undoUpdate(self):
+        content = request.get_json()
+
+        funcionario = db.session.query(Empregado).filter(Empregado.id == content["id"]).first()
+
+        funcionario.endereco = content["endereco"]
+
+        funcPagamento = db.session.query(Pagamentos).filter(Pagamentos.id == content["id"]).first()
+
+        funcPagamento.tipo = content["tipo"]
+        funcPagamento.diaMes = content["diaMes"]
+        funcPagamento.diaSem = content["diaSem"]
+        funcPagamento.tipoSem = content["tipoSem"]
+        funcPagamento.salario = content["salario"]
+        funcPagamento.salarioHora = content["salarioHora"]
+        funcPagamento.comissao = content["comissao"]
+
+        funcSindicato = db.session.query(Sindicato).filter(Sindicato.id == content["id"]).first()
+
+        funcSindicato.taxa = content["taxa"]
+        funcSindicato.taxa_add = content["taxa_add"]
+        funcSindicato.membro = content["sindicato"]
+
+        db.session.commit()
+
+        print("updated")
+        return "Updated"
+
+    def cancelSell(self):
+        '''content = request.get_json()
+
+        obj = db.session.query(Vendas).filter(Vendas.vid == content["vid"]).first()'''
+        obj = self.prev_data
+        db.session.delete(obj)
+        db.session.commit()
+
+        return "Sell canceled"
+
+    def unreadTcard(self):
+        '''content = request.get_json()
+
+        obj = db.session.query(Pontos).filter(Pontos.pid == content["pid"]).first()'''
+        obj = self.prev_data
+        db.session.delete(obj)
+        db.session.commit()
+
+        return "Unread Tcard"
+
+    def undo(self):
+        if(self.undo_function == "rmv_employee"):
+            self.rmv_employee()
+
+
 
 # Creating the ORM objects
-
-
 class Empregado(db.Model):
     id = db.Column(db.String(255), unique=True, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
@@ -108,6 +179,11 @@ def add_employee():
     )
 
     db.session.add(new_employee)
+
+    last_changes.append(Change(prev_data=None,
+                               new_data=new_employee,
+                               change_function="add_employee",
+                               undo_function="rmv_employee"))
 
     newSind = Sindicato(
         id=new_employee.id,
@@ -211,6 +287,14 @@ def update():
 
     print("updated")
     return "Updated"
+
+@app.route("/UNDO", methods=["GET", "POST"])
+def CtrlZ():
+    content = request.get_json()
+    c = last_changes.pop(0)
+    c.undo()
+
+    return "ctrlZ"
 
 
 if __name__ == '__main__':
