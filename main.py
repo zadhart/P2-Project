@@ -76,8 +76,17 @@ class Change():
         return "Unread Tcard"
 
     def undo(self):
-        if(self.undo_function == "rmv_employee"):
+        if self.undo_function == "rmv_employee":
             self.rmv_employee()
+
+        elif self.undo_function == "cancel_sell":
+            self.cancelSell()
+
+        elif self.undo_function == "unread_tcard":
+            self.unreadTcard()
+
+        else:
+            self.undoUpdate()
 
 
 
@@ -234,6 +243,12 @@ def sell():
     )
 
     db.session.add(sell)
+
+    last_changes.append(Change(prev_data=sell,
+                               new_data=None,
+                               change_function="sell",
+                               undo_function="cancel_sell"))
+
     db.session.commit()
 
     print("Created sale")
@@ -253,6 +268,12 @@ def read_tcard():
     )
 
     db.session.add(card)
+
+    last_changes.append(Change(prev_data=card,
+                               new_data=None,
+                               change_function="read_tcard",
+                               undo_function="unread_tcard"))
+
     db.session.commit()
 
     print("Added TCARD")
