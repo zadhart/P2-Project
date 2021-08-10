@@ -137,12 +137,18 @@ class Vendas(db.Model):
     id = db.Column(db.String(255), db.ForeignKey("empregado.id", ondelete='CASCADE'))
     valor = db.Column(db.Float)
     date = db.Column(db.DateTime, nullable=False)
+    mes = db.Column(db.Integer, nullable=False)
+    semana = db.Column(db.Integer, nullable=False)
+    dia = db.Column(db.Integer, nullable=False)
 
-    def __init__(self, id, valor):
+    def __init__(self, id, valor, mes, semana, dia):
         self.vid = str(uuid.uuid4())
         self.id = id
         self.valor = valor
         self.date = datetime.now()
+        self.mes = mes
+        self.semana = semana
+        self.dia = dia
 
 
 class Sindicato(db.Model):
@@ -229,7 +235,10 @@ def sell():
 
     sell = Vendas(
         id=content["id"],
-        valor=content["valor"]
+        valor=content["valor"],
+        mes=content["mes"],
+        semana=content["semana"],
+        dia=content["dia"]
     )
 
     db.session.add(sell)
@@ -402,6 +411,42 @@ def Run():
 
         result += i.salarioHora * horas_trab
         result += i.salarioHora * horas_bonus * 1.5
+
+    # Encontrando todos os empregados comissionados que recebem mensalmente
+    comissionados = db.session.query(Pagamentos).filter(Pagamentos.tipo == "Comissionado",
+                                                   Pagamentos.comissao != 0,
+                                                   Pagamentos.salarioHora == 0,
+                                                   Pagamentos.diaMes == content["diaMes"],
+                                                   Pagamentos.tipoSem == "NaN",
+                                                   Pagamentos.diaSem == "NaN").all()
+
+    for i in comissionados:
+        # print("id: ", end="")
+        # print(i.id)
+        vendas = db.session.query(Vendas).filter(Vendas.id == str(i.id), Vendas.mes == content["mes"]).all()
+
+        for v in vendas:
+
+            result += v.valor * i.comissao
+
+    # Encontrando todos os empregados comissionados que recebem mensalmente
+    comissionados = db.session.query(Pagamentos).filter(Pagamentos.tipo == "Comissionado",
+                                                        Pagamentos.comissao != 0,
+                                                        Pagamentos.salarioHora == 0,
+                                                        Pagamentos.diaMes == 0,
+                                                        Pagamentos.tipoSem == content["tipoSem"],
+                                                        Pagamentos.diaSem == content["diaSem"]).all()
+
+    for i in comissionados:
+        # print("id: ", end="")
+        # print(i.id)
+        vendas = db.session.query(Vendas).filter(Vendas.id == str(i.id),
+                                                 Vendas.mes == content["mes"],
+                                                 Vendas.semana == content["semana"]).all()
+
+        for v in vendas:
+
+            result += v.valor * i.comissao
 
     return str(result)
 
