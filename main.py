@@ -318,7 +318,6 @@ def CtrlZ():
 def Run():
     result = 0
     content = request.get_json()
-    print(content)
 
     # Encontrando todos os empregados assalariados que recebem mensalmente
     assalariados = db.session.query(Pagamentos).filter(Pagamentos.tipo == "Assalariado",
@@ -328,7 +327,6 @@ def Run():
                                                 Pagamentos.tipoSem == "NaN",
                                                 Pagamentos.diaSem == "NaN").all()
 
-    print(assalariados)
 
     for i in assalariados:
         result += i.salario
@@ -336,15 +334,74 @@ def Run():
     # Encontrando todos os empregados assalariados que recebem semanalmente
     assalariados = db.session.query(Pagamentos).filter(Pagamentos.tipo == "Assalariado",
                                                        Pagamentos.comissao == 0,
-                                                       Pagamentos.salarioHora == 0,
+                                                       Pagamentos.salarioHora > 0,
                                                        Pagamentos.diaSem == content["diaSem"],
                                                        Pagamentos.tipoSem == content["tipoSem"],
                                                        Pagamentos.diaMes == 0).all()
 
-    print(assalariados)
 
     for i in assalariados:
         result += i.salario
+
+    # Encontrando todos os empregados horistas que recebem mensalmente
+    horistas = db.session.query(Pagamentos).filter(Pagamentos.tipo == "Horista",
+                                                       Pagamentos.comissao == 0,
+                                                       Pagamentos.salarioHora != 0,
+                                                       Pagamentos.diaMes == content["diaMes"],
+                                                       Pagamentos.tipoSem == "NaN",
+                                                       Pagamentos.diaSem == "NaN").all()
+    #print("Horista: ", end="")
+    #print(horistas)
+
+    for i in horistas:
+        # print("id: ", end="")
+        # print(i.id)
+        horas = db.session.query(Pontos).filter(Pontos.id == str(i.id), Pontos.mes == content["mes"]).all()
+        # print(horas)
+        horas_trab = 0
+
+        for h in horas:
+            horas_trab += h.horasTrabalhadas
+
+        # print(i.salarioHora * horas_trab)
+
+        horas_bonus = 0
+
+        if horas_trab > 160:
+            horas_bonus = horas_trab - 160
+            horas_trab = horas_trab - 160
+
+        result += i.salarioHora * horas_trab
+        result += i.salarioHora * horas_bonus * 1.5
+
+    # Encontrando todos os empregados horistas que recebem mensalmente
+    horistas = db.session.query(Pagamentos).filter(Pagamentos.tipo == "Horista",
+                                                   Pagamentos.comissao == 0,
+                                                   Pagamentos.salarioHora != 0,
+                                                   Pagamentos.diaMes == 0,
+                                                   Pagamentos.tipoSem == content["tipoSem"],
+                                                   Pagamentos.diaSem == content["diaSem"]).all()
+
+    for i in horistas:
+        # print("id: ", end="")
+        # print(i.id)
+        horas = db.session.query(Pontos).filter(Pontos.id == str(i.id), Pontos.mes == content["mes"]).all()
+        # print(horas)
+        horas_trab = 0
+
+        for h in horas:
+            horas_trab += h.horasTrabalhadas
+
+        # print(i.salarioHora * horas_trab)
+
+        horas_bonus = 0
+
+        if horas_trab > 160:
+            horas_bonus = horas_trab - 160
+            horas_trab = horas_trab - 160
+
+        result += i.salarioHora * horas_trab
+        result += i.salarioHora * horas_bonus * 1.5
 
     return str(result)
 
