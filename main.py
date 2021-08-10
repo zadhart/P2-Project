@@ -421,8 +421,7 @@ def Run():
                                                    Pagamentos.diaSem == "NaN").all()
 
     for i in comissionados:
-        # print("id: ", end="")
-        # print(i.id)
+
         vendas = db.session.query(Vendas).filter(Vendas.id == str(i.id), Vendas.mes == content["mes"]).all()
 
         for v in vendas:
