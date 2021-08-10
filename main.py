@@ -314,6 +314,39 @@ def CtrlZ():
 
     return "ctrlZ"
 
+@app.route("/RUN", methods=["GET", "POST"])
+def Run():
+    result = 0
+    content = request.get_json()
+    print(content)
+
+    # Encontrando todos os empregados assalariados que recebem mensalmente
+    assalariados = db.session.query(Pagamentos).filter(Pagamentos.tipo == "Assalariado",
+                                                Pagamentos.comissao == 0,
+                                                Pagamentos.salarioHora == 0,
+                                                Pagamentos.diaMes == content["diaMes"],
+                                                Pagamentos.tipoSem == "NaN",
+                                                Pagamentos.diaSem == "NaN").all()
+
+    print(assalariados)
+
+    for i in assalariados:
+        result += i.salario
+
+    # Encontrando todos os empregados assalariados que recebem semanalmente
+    assalariados = db.session.query(Pagamentos).filter(Pagamentos.tipo == "Assalariado",
+                                                       Pagamentos.comissao == 0,
+                                                       Pagamentos.salarioHora == 0,
+                                                       Pagamentos.diaSem == content["diaSem"],
+                                                       Pagamentos.tipoSem == content["tipoSem"],
+                                                       Pagamentos.diaMes == 0).all()
+
+    print(assalariados)
+
+    for i in assalariados:
+        result += i.salario
+
+    return str(result)
 
 if __name__ == '__main__':
     app.run()
